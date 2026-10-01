@@ -1,0 +1,51 @@
+{
+  "name": "cecilia-pc",
+  "version": "1.1.0",
+  "description": "Cecilia · Miscelánea: inventario y caja para Windows",
+  "author": "Cecilia",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.miscelanea.cecilia",
+    "productName": "Cecilia",
+    "files": [
+      "main.js",
+      "preload.js",
+      "sync.js",
+      "modelo.js",
+      "firebase-config.js",
+      "www/**/*",
+      "build/icon.png"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cecilia",
+      "language": "3082"
+    }
+  },
+  "dependencies": {
+    "firebase": "^10.14.1"
+  }
+}
