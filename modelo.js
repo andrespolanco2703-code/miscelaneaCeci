@@ -13,12 +13,35 @@ function estable(v) {
 const hash = v => crypto.createHash('sha1').update(estable(v)).digest('hex');
 const limpio = v => JSON.parse(JSON.stringify(v)); // quita undefined, que Firestore no acepta
 
+// Firestore no admite listas dentro de listas (por ejemplo los servicios: [['Minutos', 300]]).
+// Al subir, cada lista interna se envuelve como { _arr: [...] }; al bajar se desenvuelve.
+function codificar(v) {
+  if (Array.isArray(v)) return v.map(x => (Array.isArray(x) ? { _arr: codificar(x) } : codificar(x)));
+  if (v && typeof v === 'object') {
+    const o = {};
+    Object.keys(v).forEach(k => { o[k] = codificar(v[k]); });
+    return o;
+  }
+  return v;
+}
+function decodificar(v) {
+  if (Array.isArray(v)) return v.map(decodificar);
+  if (v && typeof v === 'object') {
+    const ks = Object.keys(v);
+    if (ks.length === 1 && ks[0] === '_arr' && Array.isArray(v._arr)) return decodificar(v._arr);
+    const o = {};
+    ks.forEach(k => { o[k] = decodificar(v[k]); });
+    return o;
+  }
+  return v;
+}
+
 const COLECCIONES = ['productos', 'ventas', 'proveedores', 'facturas', 'cierres'];
 
 // Devuelve { 'coleccion/id': { data, hash } }
 function dividir(S) {
   const docs = {};
-  const poner = (col, id, data) => { docs[col + '/' + id] = limpio(data); };
+  const poner = (col, id, data) => { docs[col + '/' + id] = codificar(limpio(data)); };
 
   (S.p || []).forEach(x => poner('productos', x.id, x));
 
@@ -44,12 +67,14 @@ function dividir(S) {
 }
 
 // Recibe { 'coleccion/id': data } y rearma el estado de la app
-function unir(docs) {
+function unir(docsCodificados) {
+  let docs = docsCodificados;
   const col = c => Object.keys(docs)
     .filter(k => k.startsWith(c + '/'))
     .map(k => [k.slice(c.length + 1), docs[k]]);
   const porId = (a, b) => a.id - b.id;
 
+  docs = decodificar(docs);
   const S = { ...(docs['config/main'] || {}) };
   S.p = col('productos').map(e => e[1]).sort(porId);
   S.sales = col('ventas')
@@ -62,4 +87,4 @@ function unir(docs) {
   return S;
 }
 
-module.exports = { dividir, unir, hash, estable, COLECCIONES };
+module.exports = { dividir, unir, hash, estable, codificar, decodificar, COLECCIONES };
